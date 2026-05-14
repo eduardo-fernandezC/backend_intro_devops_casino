@@ -37,8 +37,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: v1.0.${{ github.run_number }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} .
-          echo "image-uri=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_OUTPUT
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} .
+          echo "image-uri=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
   push:
     name: Push to Amazon ECR
@@ -65,9 +65,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: v1.0.${{ github.run_number }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
 
   deploy:
@@ -77,13 +76,15 @@ jobs:
     steps:
       - name: Deploy to EC2 backend
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_TAG: v1.0.${{ github.run_number }}
         with:
           host: ${{ secrets.EC2_BACKEND_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
-            docker pull ${{ secrets.ECR_REGISTRY }}/casino-backend:latest
+            docker pull ${{ secrets.ECR_REGISTRY }}/casino-backend:v1.0.${{ github.run_number }}
             docker stop casino_backend || true
             docker rm casino_backend || true
-            docker run -d --name casino_backend --network casino_net -e PORT=3000 -e JWT_SECRET=${{ secrets.JWT_SECRET }} -e DB_HOST=casino_db -e DB_PORT=5432 -e DB_USER=${{ secrets.DB_USER }} -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} -e DB_NAME=${{ secrets.DB_NAME }} ${{ secrets.ECR_REGISTRY }}/casino-backend:latest
+            docker run -d --name casino_backend --network casino_net -e PORT=3000 -e JWT_SECRET=${{ secrets.JWT_SECRET }} -e DB_HOST=casino_db -e DB_PORT=5432 -e DB_USER=${{ secrets.DB_USER }} -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} -e DB_NAME=${{ secrets.DB_NAME }} ${{ secrets.ECR_REGISTRY }}/casino-backend:v1.0.${{ github.run_number }}
