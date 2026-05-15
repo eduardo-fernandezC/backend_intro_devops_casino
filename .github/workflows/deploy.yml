@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: casino-backend
+  ECR_REPOSITORY: backend_intro_devops_casino
 
 jobs:
   build:
@@ -84,7 +84,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
-            docker pull ${{ secrets.ECR_REGISTRY }}/casino-backend:v1.0.${{ github.run_number }}
+            docker pull ${{ secrets.ECR_REGISTRY }}/backend_intro_devops_casino:v1.0.${{ github.run_number }}
             docker stop casino_backend || true
             docker rm casino_backend || true
-            docker run -d --name casino_backend --network casino_net -e PORT=3000 -e JWT_SECRET=${{ secrets.JWT_SECRET }} -e DB_HOST=casino_db -e DB_PORT=5432 -e DB_USER=${{ secrets.DB_USER }} -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} -e DB_NAME=${{ secrets.DB_NAME }} ${{ secrets.ECR_REGISTRY }}/casino-backend:v1.0.${{ github.run_number }}
+            docker run -d --name casino_backend --network casino_net -e PORT=3000 -e JWT_SECRET=${{ secrets.JWT_SECRET }} -e DB_HOST=casino_db -e DB_PORT=5432 -e DB_USER=${{ secrets.DB_USER }} -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} -e DB_NAME=${{ secrets.DB_NAME }} ${{ secrets.ECR_REGISTRY }}/backend_intro_devops_casino:v1.0.${{ github.run_number }}
