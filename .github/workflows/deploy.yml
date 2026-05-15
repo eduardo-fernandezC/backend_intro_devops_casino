@@ -2,8 +2,13 @@ name: Build & Deploy backend
 
 on:
   push:
-    branches: [ "deploy" ]
+    branches:
+      - deploy
   workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: backend_intro_devops_casino
 
 jobs:
   build-push-deploy:
