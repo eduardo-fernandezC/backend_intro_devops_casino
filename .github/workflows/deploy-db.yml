@@ -1,6 +1,67 @@
 name: Build & Deploy database
+
 on:
   push:
-    branches: [ "deploy" ]
-    paths: [ 'db/**', '.github/workflows/deploy-db.yml' ]
+    branches:
+      - deploy
+    paths:
+      - 'db/**'
+      - '.github/workflows/deploy-db.yml'
   workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: casino-db
+
+jobs:
+  build-push-deploy-db:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login a ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build y push DB
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          IMAGE=$REGISTRY/casino-db
+
+          docker build \
+            -t $IMAGE:${{ github.sha }} \
+            -t $IMAGE:latest \
+            -t $IMAGE:v1.0.0 ./db
+
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+          docker push $IMAGE:v1.0.0
+
+      - name: Deploy DB en EC2
+        run: |
+          IMAGE=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/casino-db:latest
+
+          INSTANCE_ID=${{ secrets.EC2_BACKEND_INSTANCE_ID }}
+
+          aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands="[
+              \"aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com\",
+              \"sudo docker network create casino-net || true\",
+              \"sudo docker pull $IMAGE\",
+              \"sudo docker stop casino-db || true\",
+              \"sudo docker rm casino-db || true\",
+              \"sudo docker run -d --name casino-db --network casino-net --restart unless-stopped -e POSTGRES_USER=casino -e POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }} -e POSTGRES_DB=casino_db -p 5432:5432 $IMAGE\"
+            ]" \
+            --region ${{ secrets.AWS_REGION }}
