@@ -1,7 +1,10 @@
 services:
 
   db:
-    image: postgres:16-alpine
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    image: casino-db:latest
     container_name: casino-db
     restart: unless-stopped
     environment:
@@ -23,13 +26,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: backend_intro_devops_casino:latest
     container_name: casino-backend
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DB_HOST: db
+      DB_HOST: casino-db
       DB_PORT: 5432
       DB_USER: casino
       DB_PASSWORD: casino
