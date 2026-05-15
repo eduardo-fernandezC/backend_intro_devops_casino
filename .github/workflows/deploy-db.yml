@@ -1,0 +1,6 @@
+name: Build & Deploy database
+on:
+  push:
+    branches: [ "deploy" ]
+    paths: [ 'db/**', '.github/workflows/deploy-db.yml' ]
+  workflow_dispatch:
