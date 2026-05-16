@@ -3,7 +3,6 @@ name: Build & Deploy database
 on:
   push:
     branches: [ "deploy" ]
-    paths: [ 'db/**', '.github/workflows/deploy-db.yml' ]
   workflow_dispatch:
 
 jobs:
@@ -48,6 +47,7 @@ jobs:
               \"aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com\",
               \"docker volume create pg_data || true\",
               \"docker pull $IMAGE\",
+              \"docker stop casino-db || true\",
               \"docker rm -f casino-db || true\",
               \"docker run -d --name casino-db --restart unless-stopped -p 5432:5432 -v pg_data:/var/lib/postgresql/data -e POSTGRES_USER=casino -e POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }} -e POSTGRES_DB=casino_db $IMAGE\"
             ]" \
